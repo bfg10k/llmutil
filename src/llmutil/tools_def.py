@@ -15,8 +15,7 @@ def tool_def(fn):
     assert doc is not None
     params = list(inspect.signature(fn).parameters.keys())
 
-    sysmsg = ""
-    usrmsg = f"""generate a tool definition for this function.
+    instructions = f"""generate a tool definition for this function.
 name: {name}
 docstring: {doc}
 params: {params}"""
@@ -73,10 +72,7 @@ params: {params}"""
     }
     result = client.responses.create(
         model="gpt-4o",
-        input=[
-            {"role": "system", "content": sysmsg},
-            {"role": "user", "content": usrmsg},
-        ],
+        input=instructions,
         text=text,
     )
     data = json.loads(result.output_text)
