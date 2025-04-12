@@ -2,9 +2,7 @@ import inspect
 import json
 from collections.abc import Callable
 
-from openai import OpenAI
-
-client = OpenAI()
+from .client import default_client
 
 
 def tool_def(fn):
@@ -70,7 +68,7 @@ params: {params}"""
             "strict": True,
         },
     }
-    result = client.responses.create(
+    result = default_client().responses.create(
         model="gpt-4o",
         input=instructions,
         text=text,

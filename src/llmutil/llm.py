@@ -2,6 +2,8 @@ import json
 
 from openai import OpenAI
 
+from .client import default_client
+
 
 def chat(messages, model="gpt-4o", client=None, **kwargs):
     assert isinstance(messages, list) and len(messages) > 0
@@ -9,7 +11,7 @@ def chat(messages, model="gpt-4o", client=None, **kwargs):
     assert isinstance(client, OpenAI) or client is None
 
     if client is None:
-        client = OpenAI()
+        client = default_client()
 
     response = client.chat.completions.create(
         model=model,
@@ -40,3 +42,14 @@ def gen(sysmsg, usrmsg, response_format, model="gpt-4o", client=None, **kwargs):
         **kwargs,
     )
     return json.loads(response.choices[0].message.content)
+
+
+def ask(instructions, question):
+    response = default_client().responses.create(
+        model="gpt-4o",
+        input=[
+            {"role": "system", "content": instructions},
+            {"role": "user", "content": question},
+        ],
+    )
+    return response.output_text
