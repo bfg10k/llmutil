@@ -1,11 +1,8 @@
 import json
-import types
 from typing import Callable
 
-from .client import default_client
 
-
-def use_tools(function_call, tools):
+def do_function_call(function_call, tools):
     assert function_call["type"] == "function_call"
     assert isinstance(tools, list)
     for tool in tools:
@@ -27,34 +24,20 @@ def use_tools(function_call, tools):
     args = json.loads(arguments)
     result = fn(**args)
 
-    if isinstance(result, types.GeneratorType):
-        *intermediates, result = list(result)
-    else:
-        intermediates = []
-
-    for i in intermediates:
-        yield {
-            "type": "_intermediate",
-            "data": i,
-        }
-    yield {
+    return {
         "type": "function_call_output",
         "call_id": call_id,
         "output": str(result),
     }
 
 
-def get_tool_response(instructions, tools, tools_def, conversation):
-    temp_conversation = conversation.copy()
+def use_tools(new_response_fn, messages, tools):
+    messages = messages.copy()
+    ret = None
     while True:
-        response = default_client().responses.create(
-            model="gpt-4o",
-            input=[{"role": "system", "content": instructions}, *temp_conversation],
-            tools=tools_def,
-        )
+        res = new_response_fn(messages)
         pending = []
-        for output in response.output:
-            temp_conversation.append(output)
+        for output in res.output:
             match output.type:
                 case "function_call":
                     function_call = {
@@ -64,25 +47,13 @@ def get_tool_response(instructions, tools, tools_def, conversation):
                         "arguments": output.arguments,
                     }
                     pending.append(function_call)
-                    yield function_call
+                    messages.append(function_call)
                 case "message":
-                    message = {
-                        "role": "assistant",
-                        "content": output.content[0].text,
-                    }
-                    conversation.append(message)
-                    yield message | {"type": "message"}
+                    ret = output.content[0].text
                 case _:
-                    assert False, "unknown output type: " + output.type
+                    assert False, f"unexpected output {output.type}"
         if len(pending) == 0:
-            break
+            return ret
         for function_call in pending:
-            for tool_output in use_tools(function_call, tools):
-                yield tool_output
-                match tool_output["type"]:
-                    case "function_call_output":
-                        temp_conversation.append(tool_output)
-                    case "_intermediate":
-                        pass
-                    case _:
-                        assert False, "unknown output type: " + tool_output["type"]
+            function_call_output = do_function_call(function_call, tools)
+            messages.append(function_call_output)

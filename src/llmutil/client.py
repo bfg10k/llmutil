@@ -1,6 +1,7 @@
 from openai import OpenAI
 
 _instance = None
+default_model = "gpt-4.1"
 
 
 def default_client():

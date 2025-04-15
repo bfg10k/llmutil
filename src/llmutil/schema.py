@@ -66,3 +66,14 @@ def gen_schema(**props):
             "schema": gen_obj(**props),
         },
     }
+
+
+def format_json_schema(**props):
+    return {
+        "format": {
+            "type": "json_schema",
+            "name": "output",
+            "strict": True,
+            "schema": gen_obj(**props),
+        },
+    }

@@ -2,7 +2,7 @@ import inspect
 import json
 from collections.abc import Callable
 
-from .client import default_client
+from .client import default_client, default_model
 
 
 def tool_def(fn):
@@ -69,7 +69,7 @@ params: {params}"""
         },
     }
     result = default_client().responses.create(
-        model="gpt-4o",
+        model=default_model,
         input=instructions,
         text=text,
     )
