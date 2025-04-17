@@ -2,7 +2,7 @@ import json
 from typing import Callable
 
 
-def do_function_call(function_call, tools):
+def do_function_call(function_call, ctx, tools):
     assert function_call["type"] == "function_call"
     assert isinstance(tools, list)
     for tool in tools:
@@ -22,7 +22,7 @@ def do_function_call(function_call, tools):
 
     # call
     args = json.loads(arguments)
-    result = fn(**args)
+    result = fn(ctx, **args)
 
     return {
         "type": "function_call_output",
@@ -31,7 +31,7 @@ def do_function_call(function_call, tools):
     }
 
 
-def use_tools(new_response_fn, messages, tools):
+def use_tools(new_response_fn, messages, ctx, tools):
     messages = messages.copy()
     ret = None
     while True:
@@ -53,7 +53,8 @@ def use_tools(new_response_fn, messages, tools):
                 case _:
                     assert False, f"unexpected output {output.type}"
         if len(pending) == 0:
+            assert isinstance(ret, str) and len(ret) > 0
             return ret
         for function_call in pending:
-            function_call_output = do_function_call(function_call, tools)
+            function_call_output = do_function_call(function_call, ctx, tools)
             messages.append(function_call_output)
