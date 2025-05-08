@@ -1,3 +1,6 @@
+from openai.types.responses import ResponseTextConfigParam
+
+
 def _to_arr(items):
     return {
         "type": "array",
@@ -42,7 +45,7 @@ def gen_arr(**props):
     return _to_arr(gen_obj(**props))
 
 
-def gen_str(desc, enum=None, array=False):
+def gen_str(desc: str, enum=list[str] | None, array: bool = False):
     """
     gen_str(desc, enum=None, array=False) -> dict
 
@@ -68,7 +71,7 @@ def gen_str(desc, enum=None, array=False):
     return ret
 
 
-def gen_num(desc, array=False):
+def gen_num(desc: str, array: bool = False):
     """
     gen_num(desc, array=False) -> dict
 
@@ -90,7 +93,7 @@ def gen_num(desc, array=False):
     return ret
 
 
-def gen_bool(desc, array=False):
+def gen_bool(desc: str, array: bool = False):
     """
     gen_bool(desc, array=False) -> dict
 
@@ -112,7 +115,7 @@ def gen_bool(desc, array=False):
     return ret
 
 
-def gen_schema(**props):
+def gen_schema(**props) -> ResponseTextConfigParam:
     """
     gen_schema(**props) -> dict
 

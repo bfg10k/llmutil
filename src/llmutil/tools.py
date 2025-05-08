@@ -12,7 +12,7 @@ from openai.types.responses.response_input_item_param import FunctionCallOutput
 def do_function_call(
     function_call: ResponseFunctionToolCallParam,
     ctx: dict[str, Any],
-    tools: list[Callable[Any, str]],
+    tools: list[Callable[..., str]],
 ) -> FunctionCallOutput:
     assert isinstance(function_call, dict)
     assert function_call["type"] == "function_call"
@@ -44,10 +44,10 @@ def do_function_call(
 
 
 def use_tools(
-    new_response_fn: Callable[list[ResponseInputItemParam], Response],
+    new_response_fn: Callable[[list[ResponseInputItemParam]], Response],
     messages: list[ResponseInputItemParam],
     ctx: dict[str, Any],
-    tools: list[Callable[Any, str]],
+    tools: list[Callable[..., str]],
 ):
     """
     Helper function to handle tool (function) calls from LLM responses.
