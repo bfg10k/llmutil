@@ -15,3 +15,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/llmutil"]
+
+[dependency-groups]
+dev = [
+    "openai>=1.77.0",
+]

@@ -1,5 +1,23 @@
+def _to_arr(items):
+    return {
+        "type": "array",
+        "items": items,
+    }
+
+
 def gen_obj(**props):
-    """Generate schema for object. Properties are the fields of the object."""
+    """
+    gen_obj(**props) -> dict
+
+    Create a JSON schema for an object.
+    Each keyword argument is a property of the object.
+
+    Args:
+        **props: Fields of the object as key-value pairs.
+
+    Returns:
+        dict: JSON schema for the object.
+    """
     return {
         "type": "object",
         "properties": props,
@@ -8,20 +26,36 @@ def gen_obj(**props):
     }
 
 
-def _wrap_arr(items):
-    return {
-        "type": "array",
-        "items": items,
-    }
-
-
 def gen_arr(**props):
-    """Generate schema for array of objects. Properties are the fields of the object."""
-    return _wrap_arr(gen_obj(**props))
+    """
+    gen_arr(**props) -> dict
+
+    Create a JSON schema for an array of objects.
+    Each keyword argument is a property of the object.
+
+    Args:
+        **props: Fields of each object in the array.
+
+    Returns:
+        dict: JSON schema for array of objects.
+    """
+    return _to_arr(gen_obj(**props))
 
 
 def gen_str(desc, enum=None, array=False):
-    """Generate schema for string. When array is true, generate array of strings. Enum optionally specifies the allowed values."""
+    """
+    gen_str(desc, enum=None, array=False) -> dict
+
+    Create a JSON schema for a string field.
+
+    Args:
+        desc (str): Description of the field.
+        enum (list, optional): Allowed values. Defaults to None.
+        array (bool, optional): If True, make it an array of strings. Defaults to False.
+
+    Returns:
+        dict: JSON schema for the string or array of strings.
+    """
     assert isinstance(desc, str)
     assert enum is None or isinstance(enum, list)
     assert isinstance(array, bool)
@@ -30,45 +64,67 @@ def gen_str(desc, enum=None, array=False):
     if enum is not None:
         ret["enum"] = enum
     if array:
-        ret = _wrap_arr(ret)
+        ret = _to_arr(ret)
     return ret
 
 
 def gen_num(desc, array=False):
-    """Generate schema for number. When array is true, generate array of numbers."""
+    """
+    gen_num(desc, array=False) -> dict
+
+    Create a JSON schema for a number field.
+
+    Args:
+        desc (str): Description of the field.
+        array (bool, optional): If True, make it an array of numbers. Defaults to False.
+
+    Returns:
+        dict: JSON schema for the number or array of numbers.
+    """
     assert isinstance(desc, str)
     assert isinstance(array, bool)
 
     ret = {"type": "number", "description": desc}
     if array:
-        ret = _wrap_arr(ret)
+        ret = _to_arr(ret)
     return ret
 
 
 def gen_bool(desc, array=False):
-    """Generate schema for boolean. When array is true, generate array of booleans."""
+    """
+    gen_bool(desc, array=False) -> dict
+
+    Create a JSON schema for a boolean field.
+
+    Args:
+        desc (str): Description of the field.
+        array (bool, optional): If True, make it an array of booleans. Defaults to False.
+
+    Returns:
+        dict: JSON schema for the boolean or array of booleans.
+    """
     assert isinstance(desc, str)
     assert isinstance(array, bool)
 
     ret = {"type": "boolean", "description": desc}
     if array:
-        ret = _wrap_arr(ret)
+        ret = _to_arr(ret)
     return ret
 
 
 def gen_schema(**props):
-    """The top level schema which is always an object. Properties are the fields of the object."""
-    return {
-        "type": "json_schema",
-        "json_schema": {
-            "name": "output",
-            "strict": True,
-            "schema": gen_obj(**props),
-        },
-    }
+    """
+    gen_schema(**props) -> dict
 
+    Create a top-level JSON schema for an object.
+    Each keyword argument is a property of the object.
 
-def format_json_schema(**props):
+    Args:
+        **props: Fields of the top-level object.
+
+    Returns:
+        dict: JSON schema in OpenAI format.
+    """
     return {
         "format": {
             "type": "json_schema",
