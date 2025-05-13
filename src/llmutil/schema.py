@@ -45,7 +45,7 @@ def gen_arr(**props):
     return _to_arr(gen_obj(**props))
 
 
-def gen_str(desc: str, enum=list[str] | None, array: bool = False):
+def gen_str(desc: str, enum: list[str] | None = None, array: bool = False):
     """
     gen_str(desc, enum=None, array=False) -> dict
 
