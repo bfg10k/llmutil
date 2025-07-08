@@ -1,6 +1,6 @@
 # llmutil
 
-This library provides tools to generate structured output from the OpenAI API.
+This library provides tools to generate structured output and function calls from the OpenAI API.
 
 ## What is Structured Output?
 
@@ -8,18 +8,73 @@ This library provides tools to generate structured output from the OpenAI API.
 
 ## How to Use
 
-To use Structured Output, you need to define a schema. This library makes it easy with simple functions:
+### Structured Output
+
+To use Structured Output, you need to define a schema. This library makes it easy with simple type definitions:
 
 ```python
-sysmsg = "You are a helpful assistant that can answer questions and help with tasks."
+from llmutil import new_response
 
-result = gen(
-    sysmsg,
-    "What is the capital of Japan?",
-    gen_schema(
-        answer=gen_str("Name of the capital"),
-    ),
+output = new_response(
+    [
+        {
+            "role": "user",
+            "content": "normalize this address: 1 hacker way, menlo park, california",
+        }
+    ],
+    model="gpt-4.1-mini",
+    schema={
+        "street": "string",
+        "city": "string",
+        "state": "string",
+    },
 )
-# {'answer': 'Tokyo'}
+
+# {'type': 'message', 'content': {'street': '1 Hacker Way', 'city': 'Menlo Park', 'state': 'CA'}}
+print(output["content"])
 ```
 
+### Function Calls
+
+You can also use function calls to give the model access to tools:
+
+```python
+from llmutil import new_response, build_function_call_messages
+
+def add(a, b):
+    return a + b
+
+tools = {
+    "add": {
+        "a": "number",
+        "b": "number",
+    }
+}
+
+messages = [
+    {
+        "role": "system",
+        "content": "you cannot do math. you must use the add() function to add numbers.",
+    },
+    {
+        "role": "user",
+        "content": "alice has 10 apples, bob has 20 apples, how many apples do they have in total?",
+    },
+]
+
+output = new_response(messages, model="gpt-4.1-mini", tools=tools)
+
+# {'type': 'function_call', 'name': 'add', 'args': {'a': 10, 'b': 20}}
+print(output)
+
+# Execute the function and continue the conversation
+output["result"] = add(output["args"]["a"], output["args"]["b"])
+output = new_response(
+    messages + build_function_call_messages(output),
+    model="gpt-4.1-mini",
+    tools=tools,
+)
+
+# {'type': 'message', 'content': 'Alice and Bob have 30 apples in total.'}
+print(output)
+```
