@@ -31,7 +31,7 @@ messages = [
 ]
 
 output = new_response(
-    messages, model="gpt-4.1-mini", tools=tools, on_function_call=on_function_call
+    messages, model="o4-mini-2025-04-16", tools=tools, on_function_call=on_function_call
 )
 
 # Alice and Bob have 30 apples in total.

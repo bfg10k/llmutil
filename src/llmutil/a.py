@@ -70,19 +70,18 @@ def format_output(output: list[ResponseOutputItem], *, has_schema: bool):
     the function call. Otherwise, returns a combined text message."""
     text_output = []
     for i, item in enumerate(output):
-        if item.type == "function_call":
-            assert i == len(output) - 1, "function call must be the last output"
-            return {
-                "type": "function_call",
-                "name": item.name,
-                "args": json.loads(item.arguments),
-            }
-        elif item.type == "message":
-            text = item.content[0].text
-            assert isinstance(text, str) and len(text) > 0, text
-            text_output.append(text)
-        else:
-            raise ValueError(f"Unexpected output type: {item.type}")
+        match item.type:
+            case "function_call":
+                assert i == len(output) - 1, "function call must be the last output"
+                return {
+                    "type": "function_call",
+                    "name": item.name,
+                    "args": json.loads(item.arguments),
+                }
+            case "message":
+                text = item.content[0].text
+                assert isinstance(text, str) and len(text) > 0, text
+                text_output.append(text)
 
     if has_schema:
         assert len(text_output) == 1
