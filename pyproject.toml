@@ -1,6 +1,6 @@
 [project]
 name = "bfg-llmutil"
-version = "0.5.2"
+version = "0.5.3"
 description = "A set of utility functions to handle LLM structural output"
 readme = "README.md"
 authors = [
