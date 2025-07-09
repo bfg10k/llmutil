@@ -1,6 +1,6 @@
 # llmutil
 
-This library provides tools to generate structured output and function calls from the OpenAI API.
+This library provides tools to generate structured output and function calling from the OpenAI API.
 
 ## What is Structured Output?
 
@@ -10,7 +10,7 @@ This library provides tools to generate structured output and function calls fro
 
 ### Structured Output
 
-To use Structured Output, you need to define a schema. This library makes it easy with simple type definitions:
+To use Structured Output, you need to define a schema using a simple dictionary format:
 
 ```python
 from llmutil import new_response
@@ -29,27 +29,31 @@ output = new_response(
         "state": "string",
     },
 )
-
-# {'type': 'message', 'content': {'street': '1 Hacker Way', 'city': 'Menlo Park', 'state': 'CA'}}
-print(output["content"])
+# {'street': '1 Hacker Way', 'city': 'Menlo Park', 'state': 'CA'}
 ```
 
-### Function Calls
+### Function Calling
 
-You can also use function calls to give the model access to tools:
+For function calling, implement the `Tooling` protocol to define available functions:
 
 ```python
-from llmutil import new_response, build_function_call_messages
+from llmutil import Result, Tooling, new_response
 
 def add(a, b):
     return a + b
 
-tools = {
-    "add": {
-        "a": "number",
-        "b": "number",
-    }
-}
+class UseAdd(Tooling):
+    def on_function_call(self, name, args):
+        if name == "add":
+            return Result(add(args["a"], args["b"]))
+
+    def get_tools(self):
+        return {
+            "add": {
+                "a": "number",
+                "b": "number",
+            }
+        }
 
 messages = [
     {
@@ -62,19 +66,33 @@ messages = [
     },
 ]
 
-output = new_response(messages, model="gpt-4.1-mini", tools=tools)
-
-# {'type': 'function_call', 'name': 'add', 'args': {'a': 10, 'b': 20}}
-print(output)
-
-# Execute the function and continue the conversation
-output["result"] = add(output["args"]["a"], output["args"]["b"])
-output = new_response(
-    messages + build_function_call_messages(output),
-    model="gpt-4.1-mini",
-    tools=tools,
-)
-
-# {'type': 'message', 'content': 'Alice and Bob have 30 apples in total.'}
-print(output)
+output = new_response(messages, model="gpt-4.1-mini", tooling=UseAdd())
+# Alice and Bob have 30 apples in total.
 ```
+
+## API Reference
+
+### `new_response(messages, *, model, tooling=None, schema=None, memory=None, timeout=30)`
+
+Main function for generating responses from OpenAI API.
+
+- `messages`: List of message dictionaries in OpenAI format
+- `model`: OpenAI model name (e.g., "gpt-4.1-mini")
+- `tooling`: Optional `Tooling` implementation for function calling
+- `schema`: Optional dictionary defining the output schema
+- `memory`: Optional vector store ID for file search
+- `timeout`: Request timeout in seconds (default: 30)
+
+### `Tooling` Protocol
+
+Protocol for implementing function calling:
+
+- `on_function_call(self, name: str, args: dict)`: Handle function calls, return `Result` to continue or any other value to return immediately
+- `get_tools(self)`: Return dictionary mapping function names to parameter schemas
+
+### `Result` Class
+
+Wrapper for function call results that should continue the conversation:
+
+- `Result(result)`: Wrap a result to continue the conversation flow
+

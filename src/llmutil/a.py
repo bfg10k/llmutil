@@ -1,15 +1,25 @@
 import json
+from typing import Protocol
 
 from openai import NOT_GIVEN, NotGiven, OpenAI
 from openai.types.responses import (
+    FileSearchToolParam,
+    FunctionToolParam,
     ResponseOutputItem,
     ResponseTextConfigParam,
-    FunctionToolParam,
-    FileSearchToolParam,
-    ResponseFunctionToolCallParam,
 )
-from openai.types.responses.response_input_param import FunctionCallOutput
 from schemautil import object_schema
+
+
+class Result:
+    def __init__(self, result):
+        self.result = result
+
+
+class Tooling(Protocol):
+    def on_function_call(self, name: str, args: dict): ...
+    def get_tools(self): ...
+
 
 _client = None
 
@@ -22,29 +32,27 @@ def get_client():
 
 
 def build_tools(
-    tools: dict | None, memory: str | None
+    tooling: Tooling | None, memory: str | None
 ) -> list[FunctionToolParam | FileSearchToolParam]:
-    output = []
-    if tools:
-        output.extend(
-            [
+    tools = []
+    if tooling:
+        for name, params in tooling.get_tools().items():
+            tools.append(
                 {
                     "type": "function",
                     "name": name,
                     "parameters": object_schema(params),
                     "strict": True,
                 }
-                for name, params in tools.items()
-            ]
-        )
+            )
     if memory:
-        output.append(
+        tools.append(
             {
                 "type": "file_search",
                 "vector_store_ids": [memory],
             }
         )
-    return output
+    return tools
 
 
 def build_text(schema: dict | None) -> ResponseTextConfigParam | NotGiven:
@@ -60,7 +68,7 @@ def build_text(schema: dict | None) -> ResponseTextConfigParam | NotGiven:
     }
 
 
-def format_output(output: list[ResponseOutputItem], *, has_schema: bool) -> dict:
+def format_output(output: list[ResponseOutputItem], *, has_schema: bool):
     """Format the output list into a single message.
 
     Expects the output list to contain zero, one, or more text messages followed by
@@ -94,44 +102,46 @@ def format_output(output: list[ResponseOutputItem], *, has_schema: bool) -> dict
     }
 
 
-def build_function_call_messages(
-    *function_calls,
-) -> list[ResponseFunctionToolCallParam | FunctionCallOutput]:
-    call_id = 0
-    output = []
-    for c in function_calls:
-        output.append(
-            {
-                "type": "function_call",
-                "name": c["name"],
-                "arguments": json.dumps(c["args"]),
-                "call_id": str(call_id),
-            }
-        )
-        output.append(
-            {
-                "type": "function_call_output",
-                "call_id": str(call_id),
-                "output": c["result"]
-                if isinstance(c["result"], str)
-                else json.dumps(c["result"]),
-            }
-        )
-        call_id += 1
-    return output
-
-
 def new_response(
-    messages, *, model, tools=None, schema=None, memory=None, timeout=30
+    messages, *, model, tooling=None, schema=None, memory=None, timeout=30
 ) -> dict:
-    res = get_client().responses.create(
-        model=model,
-        input=messages,
-        tools=build_tools(tools, memory),
-        parallel_tool_calls=False,
-        text=build_text(schema),
-        timeout=timeout,
-        user="llmutil",  # improve cache hit rates
-        store=False,
-    )
-    return format_output(res.output, has_schema=bool(schema))
+    extra = []
+    while True:
+        res = get_client().responses.create(
+            model=model,
+            input=messages + extra,
+            tools=build_tools(tooling, memory),
+            parallel_tool_calls=False,
+            text=build_text(schema),
+            timeout=timeout,
+            user="llmutil",  # improve cache hit rates
+            store=False,
+        )
+        match format_output(res.output, has_schema=bool(schema)):
+            case {"type": "function_call", "name": name, "args": args}:
+                ret = tooling.on_function_call(name, args)
+                if not isinstance(ret, Result):
+                    return ret
+
+                call_id = str(len(extra))
+                extra.append(
+                    {
+                        "type": "function_call",
+                        "call_id": call_id,
+                        "name": name,
+                        "arguments": json.dumps(args),
+                    }
+                )
+                extra.append(
+                    {
+                        "type": "function_call_output",
+                        "call_id": call_id,
+                        "output": ret.result
+                        if isinstance(ret.result, str)
+                        else json.dumps(ret.result),
+                    }
+                )
+            case {"type": "message", "content": content}:
+                return content
+            case _:
+                assert False

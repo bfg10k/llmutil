@@ -1,6 +1,5 @@
 from llmutil import new_response
 
-
 output = new_response(
     [
         {
@@ -17,4 +16,4 @@ output = new_response(
 )
 
 # {'street': '1 Hacker Way', 'city': 'Menlo Park', 'state': 'CA'}
-print(output["content"])
+print(output)

@@ -1,6 +1,7 @@
-from .a import new_response, build_function_call_messages
+from .a import Result, Tooling, new_response
 
 __all__ = [
     "new_response",
-    "build_function_call_messages",
+    "Result",
+    "Tooling",
 ]
