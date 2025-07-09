@@ -6,9 +6,10 @@ def add(a, b):
 
 
 class UseAdd(Tooling):
-    def on_function_call(self, name, args):
-        if name == "add":
-            return Result(add(args["a"], args["b"]))
+    def on_function_call(self, function_call):
+        match function_call:
+            case {"name": "add", "args": {"a": a, "b": b}}:
+                return Result(add(a, b))
 
     def get_tools(self):
         return {

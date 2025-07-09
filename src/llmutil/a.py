@@ -17,7 +17,7 @@ class Result:
 
 
 class Tooling(Protocol):
-    def on_function_call(self, name: str, args: dict): ...
+    def on_function_call(self, function_call): ...
     def get_tools(self): ...
 
 
@@ -117,9 +117,10 @@ def new_response(
             user="llmutil",  # improve cache hit rates
             store=False,
         )
-        match format_output(res.output, has_schema=bool(schema)):
+        m = format_output(res.output, has_schema=bool(schema))
+        match m:
             case {"type": "function_call", "name": name, "args": args}:
-                ret = tooling.on_function_call(name, args)
+                ret = tooling.on_function_call(m)
                 if not isinstance(ret, Result):
                     return ret
 
