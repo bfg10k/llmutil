@@ -1,23 +1,22 @@
-from llmutil import Result, Tooling, new_response
+from llmutil import FunctionCallOutput, new_response
 
 
 def add(a, b):
     return a + b
 
 
-class UseAdd(Tooling):
-    def on_function_call(self, function_call):
-        match function_call:
-            case {"name": "add", "args": {"a": a, "b": b}}:
-                return Result(add(a, b))
+tools = {
+    "add": {
+        "a": "number",
+        "b": "number",
+    }
+}
 
-    def get_tools(self):
-        return {
-            "add": {
-                "a": "number",
-                "b": "number",
-            }
-        }
+
+def on_function_call(m):
+    match m:
+        case {"name": "add", "args": {"a": a, "b": b}}:
+            return FunctionCallOutput(add(a, b))
 
 
 messages = [
@@ -31,7 +30,9 @@ messages = [
     },
 ]
 
-output = new_response(messages, model="gpt-4.1-mini", tooling=UseAdd())
+output = new_response(
+    messages, model="gpt-4.1-mini", tools=tools, on_function_call=on_function_call
+)
 
 # Alice and Bob have 30 apples in total.
 print(output)

@@ -1,5 +1,4 @@
 import json
-from typing import Protocol
 
 from openai import NOT_GIVEN, NotGiven, OpenAI
 from openai.types.responses import (
@@ -11,14 +10,9 @@ from openai.types.responses import (
 from schemautil import object_schema
 
 
-class Result:
-    def __init__(self, result):
-        self.result = result
-
-
-class Tooling(Protocol):
-    def on_function_call(self, function_call): ...
-    def get_tools(self): ...
+class FunctionCallOutput:
+    def __init__(self, output):
+        self.output = output
 
 
 _client = None
@@ -32,12 +26,12 @@ def get_client():
 
 
 def build_tools(
-    tooling: Tooling | None, memory: str | None
+    tools, memory: str | None
 ) -> list[FunctionToolParam | FileSearchToolParam]:
-    tools = []
-    if tooling:
-        for name, params in tooling.get_tools().items():
-            tools.append(
+    ret = []
+    if tools:
+        for name, params in tools.items():
+            ret.append(
                 {
                     "type": "function",
                     "name": name,
@@ -46,13 +40,13 @@ def build_tools(
                 }
             )
     if memory:
-        tools.append(
+        ret.append(
             {
                 "type": "file_search",
                 "vector_store_ids": [memory],
             }
         )
-    return tools
+    return ret
 
 
 def build_text(schema: dict | None) -> ResponseTextConfigParam | NotGiven:
@@ -103,14 +97,30 @@ def format_output(output: list[ResponseOutputItem], *, has_schema: bool):
 
 
 def new_response(
-    messages, *, model, tooling=None, schema=None, memory=None, timeout=30
+    messages,
+    *,
+    model,
+    tools=None,
+    schema=None,
+    memory=None,
+    timeout=30,
+    on_function_call=None,
 ) -> dict:
+    if tools is None:
+        assert on_function_call is None, (
+            "tools is None, so on_function_call must be None"
+        )
+    else:
+        assert on_function_call is not None, (
+            "tools is not None, so on_function_call must not be None"
+        )
+
     extra = []
     while True:
         res = get_client().responses.create(
             model=model,
             input=messages + extra,
-            tools=build_tools(tooling, memory),
+            tools=build_tools(tools, memory),
             parallel_tool_calls=False,
             text=build_text(schema),
             timeout=timeout,
@@ -120,8 +130,8 @@ def new_response(
         m = format_output(res.output, has_schema=bool(schema))
         match m:
             case {"type": "function_call", "name": name, "args": args}:
-                ret = tooling.on_function_call(m)
-                if not isinstance(ret, Result):
+                ret = on_function_call(m)
+                if not isinstance(ret, FunctionCallOutput):
                     return ret
 
                 call_id = str(len(extra))
@@ -137,9 +147,9 @@ def new_response(
                     {
                         "type": "function_call_output",
                         "call_id": call_id,
-                        "output": ret.result
-                        if isinstance(ret.result, str)
-                        else json.dumps(ret.result),
+                        "output": ret.output
+                        if isinstance(ret.output, str)
+                        else json.dumps(ret.output),
                     }
                 )
             case {"type": "message", "content": content}:
