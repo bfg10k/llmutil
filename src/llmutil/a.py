@@ -104,6 +104,7 @@ def new_response(
     memory=None,
     timeout=30,
     on_function_call=None,
+    force_tool_use=False,
 ) -> dict:
     if tools is None:
         assert on_function_call is None, (
@@ -125,6 +126,7 @@ def new_response(
             timeout=timeout,
             user="llmutil",  # improve cache hit rates
             store=False,
+            tool_choice="required" if force_tool_use else "auto",
         )
         m = format_output(res.output, has_schema=bool(schema))
         match m:
@@ -132,6 +134,10 @@ def new_response(
                 ret = on_function_call(m)
                 if not isinstance(ret, FunctionCallOutput):
                     return ret
+
+                assert not force_tool_use, (
+                    "force_tool_use is True. may enter infinite loop."
+                )
 
                 call_id = str(len(extra))
                 extra.append(
